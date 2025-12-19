@@ -7,7 +7,8 @@ class hmm_parameters:
 
     mouse_id: str
     session_id: str
-    root_path: str  # The path to the local data folder
+    root_path: str
+    session_mouse_dict: dict  # Mapping of mouse IDs to their session IDs
     hmm_base_outpath: str
 
 

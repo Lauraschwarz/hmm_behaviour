@@ -373,7 +373,16 @@ class VideoAnnotator:
         keypoint_labels = keypoint_data['keypoint_labels']
         pairs_to_connect = keypoint_data['pairs_to_connect']
         dataset = keypoint_data['dataset']  # Get original dataset for speed
-        
+
+        #debug the shape and type of the keypoint data
+        # print("DEBUG:", position)
+        # print("DEBUG:", confidence)
+        # print("DEBUG:", has_confidence)
+        # print("DEBUG:", actual_keypoints)
+        # print("DEBUG:", keypoint_labels)
+        # print("DEBUG:", pairs_to_connect)
+        # print("DEBUG:", dataset)
+
         height, width = frame.shape[:2]
         
         # Get time point corresponding to this frame
@@ -408,6 +417,8 @@ class VideoAnnotator:
                 kp2 = keypoint_labels[idx2]
                 
                 try:
+                    # print("DEBUG:", keypoints_pos.sel(keypoints=kp1, space="x"))
+
                     pos1_x = float(keypoints_pos.sel(keypoints=kp1, space="x").values)
                     pos1_y = float(keypoints_pos.sel(keypoints=kp1, space="y").values)
                     pos2_x = float(keypoints_pos.sel(keypoints=kp2, space="x").values)
@@ -752,13 +763,13 @@ def visualize_head_directions(
         # ).mean(dim="keypoints")
 
         head_centre = position_data.sel(
-            keypoints="Head Centre",
+            keypoints="neck",
             time=time_point
         )
         
         # Get body center position if it exists
         try:
-            body_center = position_data.sel(keypoints="Centre", time=time_point)
+            body_center = position_data.sel(keypoints="abdomen", time=time_point)
         except KeyError:
             # If body_centre is not available, use the midpoint of all keypoints
             body_center = position_data.sel(time=time_point).mean(dim="keypoints")
@@ -952,3 +963,4 @@ def create_head_direction_video(
         end_frame,
         roi=roi
     )
+

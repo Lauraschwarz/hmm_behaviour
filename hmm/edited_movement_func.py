@@ -93,8 +93,8 @@ def plot_centroid_trajectory(
     colorbar = True if not suppress_colorbar else False
 
     if "c" not in kwargs:
-        if manual_color_var and (manual_color_var in plot_point.coords):
-            kwargs["c"] = plot_point[manual_color_var].values
+        if manual_color_var and (manual_color_var in plot_point.attrs):
+            kwargs["c"] = plot_point[manual_color_var]
             time_label = manual_color_var
         else:
             kwargs["c"] = plot_point.time
@@ -261,7 +261,8 @@ def plot_centroid_trajectory_quiver(
 def plot_centroid_trajectory_by_states(
     da: xr.DataArray,
     c: np.ndarray | list,  # State values for masking
-    speed: np.ndarray | list,  # Speed values for coloring
+    plotby: np.ndarray | list,
+    label:str,  
     individual: str | None = None,
     keypoints: str | list[str] | None = None,
     figsize: tuple = None,
@@ -333,14 +334,14 @@ def plot_centroid_trajectory_by_states(
     
     # Convert c and speed to numpy arrays for easier handling
     c = np.array(c)
-    speed = np.array(speed)
+    plotby = np.array(plotby)
     
     # Check that c and speed have the same length as time dimension
     if len(c) != len(plot_point.time):
         raise ValueError(f"Length of c ({len(c)}) must match time dimension ({len(plot_point.time)})")
     
-    if len(speed) != len(plot_point.time):
-        raise ValueError(f"Length of speed ({len(speed)}) must match time dimension ({len(plot_point.time)})")
+    if len(plotby) != len(plot_point.time):
+        raise ValueError(f"Length of speed ({len(plotby)}) must match time dimension ({len(plot_point.time)})")
     
     # Get unique state values
     unique_states = np.unique(c)
@@ -366,8 +367,8 @@ def plot_centroid_trajectory_by_states(
     kwargs.pop('c', None)
     
     # Get global speed range for consistent coloring across subplots
-    speed_min, speed_max = np.nanmin(speed), np.nanpercentile(speed, 95)  # ignores top 1% of values
-    print('max speed:', np.nanmax(speed))
+    speed_min, speed_max = np.nanmin(plotby), np.nanpercentile(plotby, 95)  # ignores top 1% of values
+    print('max speed:', np.nanmax(plotby))
 
     axes_list = []
     
@@ -380,7 +381,7 @@ def plot_centroid_trajectory_by_states(
         
         # Apply mask to get data for this state
         masked_data = plot_point.isel(time=mask)
-        masked_speed = speed[mask]
+        masked_speed = plotby[mask]
         
         # Skip if no data for this state
         if len(masked_data.time) == 0:
@@ -408,7 +409,7 @@ def plot_centroid_trajectory_by_states(
         ax.set_ylim(0, 1024)  # Set consistent scale
         
         # Add colorbar for speed
-        fig.colorbar(sc, ax=ax, label="Speed").solids.set(alpha=1.0)
+        fig.colorbar(sc, ax=ax, label=label).solids.set(alpha=1.0)
     
     # Hide unused subplots
     for j in range(i + 1, len(axes_flat)):
@@ -416,3 +417,4 @@ def plot_centroid_trajectory_by_states(
     
     plt.tight_layout()
     return fig, axes_list
+
