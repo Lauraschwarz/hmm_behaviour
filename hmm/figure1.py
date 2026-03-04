@@ -30,6 +30,7 @@ from scipy.signal import find_peaks
 from scipy.integrate import cumulative_trapezoid
 import numpy as np
 import ultraplot as uplt
+
 #from plotting import plot_deltaF
 
 cmp = sns.diverging_palette(220, 20, as_cmap=True)
@@ -87,12 +88,6 @@ CHASE = {'1106077': r'F:\social_sniffing\derivatives\1106077\2025-09-23T12-31-23
                 '1106009': r'F:\social_sniffing\derivatives\1106009\2025-09-23T14-16-08\Video\chase.npy',
                 '1106010': r'F:\social_sniffing\derivatives\1106010\2025-09-17T12-23-11\Video\chase.npy'
                        }
-
-
-file_path = pathlib.Path(r'F:\social_sniffing\derivatives\all_mice_df_with_genotypes_olfactory_ctrls.csv')
-
-df = pd.read_csv(file_path)
-
 
 def panel_D(df,  mouse_id=1106079, column='sampling', signal_col='deltaF_z', condition='Control'):
     df_g = df[(df["mouse_id"] == mouse_id)]
@@ -589,12 +584,12 @@ def sniff_trace_example(mouse_id=1106077):
     plt.show()
  
 
-for genotype in ['VGAT']:
-    #panel_E_genotype(df, genotype=genotype, column='stim_onset', signal_col='deltaF_z', condition='Methimazole')
-    panel_E_genotype(df, genotype=genotype, column='sampling', signal_col='deltaF_z', condition='Aversive')
-    #comp_session(df, genotype=genotype, column='sampling', signal_col='deltaF_z')
-    #Methimazole_comp(df, column='sampling', signal_col='deltaF_z', genotype=genotype)
-exit()
+# for genotype in ['VGAT']:
+#     #panel_E_genotype(df, genotype=genotype, column='stim_onset', signal_col='deltaF_z', condition='Methimazole')
+#     panel_E_genotype(df, genotype=genotype, column='sampling', signal_col='deltaF_z', condition='Aversive')
+#     #comp_session(df, genotype=genotype, column='sampling', signal_col='deltaF_z')
+#     #Methimazole_comp(df, column='sampling', signal_col='deltaF_z', genotype=genotype)
+# exit()
 def plot_deltaF_all(df, column='stim_onset', signal_col='deltaF_z', outpath=Path(r'F:\upgrade_figures')):
     array = [[1,1,1],[2,2,2],[3,3,3],[4,4,4]]
     fig, ax = uplt.subplots(array, figsize=(3, 8), share=False, includepanels=True)

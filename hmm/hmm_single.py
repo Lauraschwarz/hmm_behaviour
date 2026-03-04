@@ -3,7 +3,7 @@ from xml.parsers.expat import model
 import autograd.numpy as np
 import autograd.numpy.random as npr
 from scipy.ndimage import gaussian_filter1d
-from plotting_hmm import  plot_transition_circos, plot_emission_means_line
+
 npr.seed(42)
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,12 +26,7 @@ class AeonHMM:
             "snout_groin",
             "neckL_groin",
             "neckR_groin",
-            "sniff_freq",
-            "speed_con_smoothed", 
-            "acceleration_con_smoothed",
-            "snout_groin_con",
-            "neckL_groin_con",
-            "neckR_groin_con",
+            "sniff_freq"
                     ]  # Expected features in the input data
         self.model = None  # HMM model instance
         self.parameters = None  # Sorted model parameters (mean, variance, covariance)
@@ -278,13 +273,11 @@ class AeonHMM:
 def plot_transition_matrix(trans, output_path=None):
     matrix = trans['transition_matrix']
     annot_array = np.array([[round(item, 3) for item in row] for row in matrix])
-    labels = ["$S_{" + str(i) + "}$" for i in range(len(matrix))]
+    labels = ["$S_{" + str(i + 1) + "}$" for i in range(len(matrix))]
     fig, ax = plt.subplots(figsize=(8, 6))
-    palette = sns.color_palette("ch:s=.25,rot=-.25", as_cmap=True)
-
     sns.heatmap(
         matrix,
-        cmap=palette,
+        cmap="RdBu",
         ax=ax,
         square="True",
         cbar=True,
@@ -297,30 +290,6 @@ def plot_transition_matrix(trans, output_path=None):
     plt.savefig(output_path, dpi=300)
     plt.close()
 
-def plot_model_transition_circos(model, output_path=None,
-                                  min_prob=0.001,
-                                  max_edges_per_node=4,
-                                  arrow=True):
-    """
-    Plots circos-style transition graph using the fitted model's
-    transition matrix (not empirical data).
-    """
-    A = model.model.transitions.transition_matrix
-    K = A.shape[0]
-
-    fig, ax = plot_transition_circos(
-        A,
-        min_prob=min_prob,
-        max_edges_per_node=max_edges_per_node,
-        arrow=arrow,
-        title="Model transition probability"
-    )
-
-    if output_path is not None:
-        fig.savefig(output_path, dpi=300)
-        plt.close(fig)
-
-    return fig, ax
 
 def run_inference_hmm(model_dir,inference_path, k=5, model_type='gaussian' ):
 
@@ -337,15 +306,6 @@ def run_inference_hmm(model_dir,inference_path, k=5, model_type='gaussian' ):
 
     occ = model.state_occupancy()
     print(occ)
-    # if model.parameters is not None:
-
-    #     plot_emission_means_with_ci(
-    #     model,
-    #     feature_labels=[],
-    #     scales=[...],
-    #     savepath=output_dir / f"emission_means_ci_K={k}.svg",
-    #     title=f"Emission means (model, K={k})"
-    # )
 
     dwell = model.state_dwell_times()
 
@@ -361,11 +321,6 @@ def run_inference_hmm(model_dir,inference_path, k=5, model_type='gaussian' ):
             "neckL_groin",
             "neckR_groin",
             "sniff_freq",
-            "speed_con_smoothed", 
-            "acceleration_con_smoothed",
-            "snout_groin_con",
-            "neckL_groin_con",
-            "neckR_groin_con",
             "trial", 
             'mouse_id'
             ]
@@ -374,9 +329,6 @@ def run_inference_hmm(model_dir,inference_path, k=5, model_type='gaussian' ):
         infer_data['speed_lag2'] = infer_data["smoothed_speed"].shift(2)
         infer_data["snout_groin_lag1"] = infer_data["snout_groin"].shift(1)
         infer_data["sniff_lag1"] = infer_data["sniff_freq"].shift(1)
-        infer_data['speed_lag1_con'] = infer_data["speed_con_smoothed"].shift(1)
-        infer_data['speed_lag2_con'] = infer_data["speed_con_smoothed"].shift(2)
-        infer_data["snout_groin_lag1_con"] = infer_data["snout_groin_con"].shift(1)
 
         # infer_data = infer_data.groupby(["mouse_id","trial"])[infer_data.columns].transform(lambda x: x.rolling(3, center=True, min_periods=1).mean())
         # infer_data = bin_dataframe(infer_data, bin_size=0, feature_cols=infer_data.columns)
@@ -394,20 +346,11 @@ def run_inference_hmm(model_dir,inference_path, k=5, model_type='gaussian' ):
         stats = model.state_feature_stats(infer_data)
 
         output_path = output_dir / f"hmm_inferred_states_K={k}.csv" 
-        plot_transition_matrix(trans, output_path=(output_dir/ f"transition_matrix_K={k}.svg"))
-        plot_model_transition_circos(model, output_path=(output_dir/ f"transition_circos_K={k}.svg"))
- 
+        plot_transition_matrix(trans, output_path=(output_dir/ f"transition_matrix_K={k}.png"))
 
         infer_data.to_csv(output_path, index=False)
         add_states_to_df(output_dir, inference_path, k=k)
-        state_mean_speed = model.model.observations.params[0].T[0]
-        sort_idx = np.argsort(state_mean_speed, -1)
-        model.sort(sort_idx=sort_idx)
-        plot_emission_means_line(
-            model,
-            savepath=output_dir / f"emission_means_ci_K={k}.svg"
-            
-        )
+
         print(f"Saved inferred states to {output_path}")
 
 def posterior_smooth(post, window=5):
@@ -450,23 +393,14 @@ def fit_model_hmm(concat_data_path,output_path, restarts=5, Ks=range(2,11)):
             "neckL_groin",
             "neckR_groin",
             "sniff_freq",
-            "speed_con_smoothed", 
-            "acceleration_con_smoothed",
-            "snout_groin_con",
-            "neckL_groin_con",
-            "neckR_groin_con",
             "trial", 
             'mouse_id'
         ]
     ]
-    g = train_data.groupby(["mouse_id", "trial"], sort=False)
-    train_data["speed_lag1"] = g["smoothed_speed"].shift(1)
-    train_data["speed_lag2"] = g["smoothed_speed"].shift(2)
-    train_data["snout_groin_lag1"] = g["snout_groin"].shift(1)
-    train_data["sniff_lag1"] = g["sniff_freq"].shift(1)
-    train_data["speed_lag1_con"] = g["speed_con_smoothed"].shift(1)
-    train_data["speed_lag2_con"] = g["speed_con_smoothed"].shift(2)
-    train_data["snout_groin_lag1_con"] = g["snout_groin_con"].shift(1)
+    train_data["speed_lag1"] = train_data["smoothed_speed"].shift(1)
+    train_data['speed_lag2'] = train_data["smoothed_speed"].shift(2)
+    train_data["snout_groin_lag1"] = train_data["snout_groin"].shift(1)
+    train_data["sniff_lag1"] = train_data["sniff_freq"].shift(1)
 #     train_data[train_data.columns] = (
 #     train_data
 #     .groupby(["mouse_id","trial"])[train_data.columns]
@@ -530,11 +464,6 @@ def run_hmm_analysis(K, session_path, fit_model=False):
             "neckL_groin",
             "neckR_groin",
             "sniff_freq",
-            "speed_con_smoothed", 
-            "acceleration_con_smoothed",
-            "snout_groin_con",
-            "neckL_groin_con",
-            "neckR_groin_con",
             "trial",
             "mouse_id"
             ]
@@ -543,9 +472,6 @@ def run_hmm_analysis(K, session_path, fit_model=False):
         train_data['speed_lag2'] = train_data["smoothed_speed"].shift(2)
         train_data["snout_groin_lag1"] = train_data["snout_groin"].shift(1)
         train_data["sniff_lag1"] = train_data["sniff_freq"].shift(1)
-        train_data['speed_lag1_con'] = train_data["speed_con_smoothed"].shift(1)
-        train_data['speed_lag2_con'] = train_data["speed_con_smoothed"].shift(2)
-        train_data["snout_groin_lag1_con"] = train_data["snout_groin_con"].shift(1)
         mouse_hmm.fit_model(train_data)
     else:
         model = AeonHMM.load(session_path / f"hmm_model_K={K}.pkl")  # Load pre-trained model
@@ -557,11 +483,6 @@ def run_hmm_analysis(K, session_path, fit_model=False):
             "neckL_groin",
             "neckR_groin",
             "sniff_freq",
-            "speed_con_smoothed", 
-            "acceleration_con_smoothed",
-            "snout_groin_con",
-            "neckL_groin_con",
-            "neckR_groin_con",
             "trial",
             "mouse_id"
             ]
@@ -570,55 +491,11 @@ def run_hmm_analysis(K, session_path, fit_model=False):
         infer_data['speed_lag2'] = infer_data["smoothed_speed"].shift(2)
         infer_data["snout_groin_lag1"] = infer_data["snout_groin"].shift(1)
         infer_data["sniff_lag1"] = infer_data["sniff_freq"].shift(1)
-        infer_data['speed_lag1_con'] = infer_data["speed_con_smoothed"].shift(1)
-        infer_data['speed_lag2_con'] = infer_data["speed_con_smoothed"].shift(2)
-        infer_data["snout_groin_lag1_con"] = infer_data["snout_groin_con"].shift(1)
 
         model.infer_states(infer_data)
-# exit()
-#fit_model_hmm(r"F:\social_sniffing\derivatives\test_concat_hmm_features_olfactory_ctrls_Methimazoleall_mice.csv", output_path=r"F:\hmm\models\Methimazole\gaussian_raw", restarts=5, Ks=range(4,6))
-# for k in range(4,7):
+
+#fit_model_hmm(r"F:\social_sniffing\derivatives\test_concat_hmm_features_social_all_mice.csv", output_path=r"F:\hmm\models\social\gaussian_raw", restarts=5, Ks=range(3,8))
+for k in range(4,7):
+    run_inference_hmm(model_dir=Path(r"F:\hmm\models\all_mice"), k=k, model_type='gaussian_raw', inference_path=Path(rf"F:\social_sniffing\derivatives\1106010\olfactory_ctrls\CTRL\hmm_combined"))
     #
     #run_inference_hmm(model_dir=Path(r"F:\hmm\models\all_mice"), k=k, model_type='gaussian_raw', inference_path=Path(rf"F:\social_sniffing\derivatives\1106009\olfactory_ctrls\CTRL\hmm_combined"))
-MICE = ['1106077', '1106009', '1106010',  '1106078', '1106079']#, '1125563', '1125561','1125555','1125131', '1125132']
-#
-#for m in MICE:
-#fit_model_hmm(rf"F:\social_sniffing\derivatives\test_concat_hmm_features_social_CTRLall_mice_doublefeature.csv", output_path=rf"F:\hmm\models\social_all_mice\gaussian_raw", restarts=5, Ks=range(3,8))
-run_inference_hmm(model_dir=Path(r"F:\hmm\models\social_all_mice"), k=5, model_type='gaussian_raw', inference_path=Path(rf"F:\social_sniffing\derivatives\1106078\social\CTRL\hmm_combined"))
-exit()
-MICE = ['1106077', '1106009', '1106010',  '1106078', '1106079']#, '1125563', '1125561','1125555','1125131', '1125132']
-for mouse in MICE:
-    fpath = rf"F:\social_sniffing\derivatives\{mouse}"
-    all_sessions = Path(fpath).rglob("imputed_split_sampling_bouts.csv")
-    for path in all_sessions:
-        print(f"fitting model for mouse {mouse}, session {path.parent}...")
-        fit_model_hmm(path, output_path=outpath, restarts=3, Ks=range(1,11))
-           
-model_path = r"F:\hmm\models\best_hmm_K=5.pkl"
-true_hmm = AeonHMM.load(model_path)
-true_states, obs = true_hmm.sample(time_bins)
-true_ll = true_hmm.log_probability(obs)
-# Plot the observation distributions
-lim = .85 * abs(obs).max()
-XX, YY = np.meshgrid(np.linspace(-lim, lim, 100), np.linspace(-lim, lim, 100))
-data = np.column_stack((XX.ravel(), YY.ravel()))
-input = np.zeros((data.shape[0], 0))
-mask = np.ones_like(data, dtype=bool)
-tag = None
-lls = true_hmm.observations.log_likelihoods(data, input, mask, tag)
-# Below, we plot the samples obtained from the HMM, color-coded according to the underlying state. 
-# The solid curves show regions of of equal probability density around each mean. 
-# The thin gray lines trace the latent variable as it transitions from one state to another.
-
-plt.figure(figsize=(6, 6))
-for k in range(num_states):
-    plt.contour(XX, YY, np.exp(lls[:,k]).reshape(XX.shape), cmap=white_to_color_cmap(colors[k]))
-    plt.plot(obs[true_states==k, 0], obs[true_states==k, 1], 'o', mfc=colors[k], mec='none', ms=4)
-    
-plt.plot(obs[:,0], obs[:,1], '-k', lw=1, alpha=.25)
-plt.xlabel("$x_1$")
-plt.ylabel("$x_2$")
-plt.title("Observation Distributions")
-
-if save_figures:
-    plt.savefig("hmm_1.pdf")
